@@ -1,5 +1,5 @@
-#ifndef WIFIPROPCONNECTION_H
-#define WIFIPROPCONNECTION_H
+#ifndef WIFIPROP2CONNECTION_H
+#define WIFIPROP2CONNECTION_H
 
 #include <string>
 #include <list>
@@ -15,10 +15,10 @@
 #define DISCOVER_REPLY_TIMEOUT      250
 #define DISCOVER_ATTEMPTS           3
 
-class WiFiInfo {
+class WiFi2Info {
 public:
-    WiFiInfo() {}
-    WiFiInfo(std::string name, std::string address) : m_name(name), m_address(address) {}
+    WiFi2Info() {}
+    WiFi2Info(std::string name, std::string address) : m_name(name), m_address(address) {}
     const char *name() { return m_name.c_str(); }
     const char *address() { return m_address.c_str(); }
 private:
@@ -26,13 +26,13 @@ private:
     std::string m_address;
 };
 
-typedef std::list<WiFiInfo> WiFiInfoList;
+typedef std::list<WiFi2Info> WiFi2InfoList;
 
-class WiFiPropConnection : public PropConnection
+class WiFiProp2Connection : public PropConnection
 {
 public:
-    WiFiPropConnection();
-    ~WiFiPropConnection();
+    WiFiProp2Connection();
+    ~WiFiProp2Connection();
     int setAddress(const char *ipaddr);
     int getVersion();
     int checkVersion();
@@ -53,7 +53,7 @@ public:
     int setBaudRate(int baudRate);
     int maxDataSize() { return 1024; }
     int terminal(bool checkForExit, bool pstMode);
-    static int findModules(bool show, WiFiInfoList &list, int count = -1);
+    static int findModules(bool show, WiFi2InfoList &list, int count = -1);
 private:
     int sendRequest(uint8_t *req, int reqSize, uint8_t *res, int resMax, int *pResult);
     static uint8_t *getBody(uint8_t *msg, int msgSize, int *pBodySize);
@@ -67,4 +67,4 @@ private:
     int m_resetPin;
 };
 
-#endif // WIFIPROPCONNECTION_H
+#endif // WIFIPROP2CONNECTION_H

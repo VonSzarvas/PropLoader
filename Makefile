@@ -45,7 +45,7 @@ CPP=$(PREFIX)g++
 SPINCMP=openspin
 TOOLCC=gcc
 
-CFLAGS=-Wall -DVERSION=\""$(VERSION)"\"
+CFLAGS=-Wall -std=c++11 -DVERSION=\""$(VERSION)"\"
 LDFLAGS=
 
 ifeq ($(OS),Windows_NT)
@@ -101,6 +101,7 @@ $(OBJDIR)/packet.o \
 $(OBJDIR)/serialpropconnection.o \
 $(OBJDIR)/serialloader.o \
 $(OBJDIR)/wifipropconnection.o \
+$(OBJDIR)/wifiprop2connection.o \
 $(OBJDIR)/loadelf.o \
 $(OBJDIR)/sd_helper.o \
 $(OBJDIR)/config.o \
@@ -121,7 +122,7 @@ $(OBJS):	$(OBJDIR)/created $(HDRS) $(OBJDIR)/IP_Loader.h Makefile
 $(BINDIR)/proploader$(EXT):	$(BINDIR)/created $(OBJS)
 	$(CPP) -o $@ $(LDFLAGS) $(OBJS) $(LIBS) -lstdc++
 
-$(BUILD)/%.elf:	%.c
+$(BUILD)/%.elf:	%.c 
 	propeller-elf-gcc -Os -mlmm -o $@ $<
     
 $(BUILD)/%-fast.binary:	%.spin

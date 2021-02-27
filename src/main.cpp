@@ -14,26 +14,27 @@
 #include "loader.h"
 #include "serialpropconnection.h"
 #include "wifipropconnection.h"
+#include "wifiprop2connection.h"
 #include "config.h"
 
 /* default port name prefix if only a partial name is specified */
 #if defined(CYGWIN) || defined(WIN32) || defined(MINGW)
-  #define PORT_PREFIX "COM"
+#define PORT_PREFIX "COM"
 #elif defined(LINUX)
-  #ifdef RASPBERRY_PI
-    #define PORT_PREFIX "/dev/serial"
-  #else
-    #define PORT_PREFIX "/dev/ttyUSB"
-  #endif
-#elif defined(MACOSX)
-  #define PORT_PREFIX "/dev/cu.usbserial-"
+#ifdef RASPBERRY_PI
+#define PORT_PREFIX "/dev/serial"
 #else
-  #define PORT_PREFIX ""
+#define PORT_PREFIX "/dev/ttyUSB"
+#endif
+#elif defined(MACOSX)
+#define PORT_PREFIX "/dev/cu.usbserial-"
+#else
+#define PORT_PREFIX ""
 #endif
 
 static void usage(const char *progname)
 {
-printf("\
+    printf("\
 PropLoader %s\n\
 \n\
 usage: %s [options] [<file>]\n\
@@ -70,7 +71,7 @@ Variables that can be set with -D are:\n\
 \n\
 Used by the loader:\n\
   loader reset clkfreq clkmode fast-loader-clkfreq fast-loader-clkmode\n\
-  baud-rate loader-baud-rate fast-loader-baud-rate\n\
+  baud-rate loader-baud-rate fast-loader-baud-rate chipver\n\
 \n\
 Used by the SD file writer:\n\
   sdspi-do sdspi-clk sdspi-di sdspi-cs\n\
@@ -83,7 +84,8 @@ Value expressions for -D can include:\n\
   or a parenthesized expression.\n\
 \n\
 Examples:\n\
-  loader=rom  to use the ROM loader instead of the fast loader\n", VERSION, progname);
+  loader=rom  to use the ROM loader instead of the fast loader\n",
+           VERSION, progname);
     exit(1);
 }
 
@@ -113,23 +115,28 @@ int main(int argc, char *argv[])
     int loadType = ltShutdown;
     bool useSerial = false;
     bool writeFile = false;
+    bool chipVerP2 = false;
     SerialPropConnection *serialConnection = NULL;
     WiFiPropConnection *wifiConnection = NULL;
+    WiFiProp2Connection *wifi2Connection = NULL;
     PropConnection *connection;
     Loader loader;
     const char *p;
     int sts, i;
-    
+
     /* setup a configuration to collect command line -D settings */
     configSettings = NewBoardConfig(NULL, "");
 
     /* get the arguments */
-    for (i = 1; i < argc; ++i) {
+    for (i = 1; i < argc; ++i)
+    {
 
         /* handle switches */
-        if (argv[i][0] == '-') {
-            switch (argv[i][1]) {
-            case 'b':   // select a target board
+        if (argv[i][0] == '-')
+        {
+            switch (argv[i][1])
+            {
+            case 'b': // select a target board
                 if (argv[i][2])
                     board = &argv[i][2];
                 else if (++i < argc)
@@ -137,7 +144,7 @@ int main(int argc, char *argv[])
                 else
                     usage(argv[0]);
                 break;
-            case 'c':   // display numeric message codes
+            case 'c': // display numeric message codes
                 showMessageCodes = true;
                 break;
             case 'D':
@@ -152,7 +159,8 @@ int main(int argc, char *argv[])
                     char var[128];
                     if ((p2 = strchr(p, '=')) == NULL)
                         usage(argv[0]);
-                    if (p2 - p > (int)sizeof(var) - 1) {
+                    if (p2 - p > (int)sizeof(var) - 1)
+                    {
                         printf("error: variable name too long");
                         return 1;
                     }
@@ -161,10 +169,10 @@ int main(int argc, char *argv[])
                     SetConfigField(configSettings, var, p2 + 1);
                 }
                 break;
-            case 'e':   // program eeprom
+            case 'e': // program eeprom
                 loadType |= ltDownloadAndProgram;
                 break;
-            case 'f':   // write a file to the SD card
+            case 'f': // write a file to the SD card
                 if (argv[i][2])
                     file = &argv[i][2];
                 else if (++i < argc)
@@ -173,7 +181,7 @@ int main(int argc, char *argv[])
                     usage(argv[0]);
                 writeFile = true;
                 break;
-            case 'i':   // set the ip address
+            case 'i': // set the ip address
                 if (argv[i][2])
                     ipaddr = &argv[i][2];
                 else if (++i < argc)
@@ -182,7 +190,7 @@ int main(int argc, char *argv[])
                     usage(argv[0]);
                 useSerial = false;
                 break;
-            case 'I':   // add a directory to the .cfg include path
+            case 'I': // add a directory to the .cfg include path
                 if (argv[i][2])
                     p = &argv[i][2];
                 else if (++i < argc)
@@ -191,7 +199,7 @@ int main(int argc, char *argv[])
                     usage(argv[0]);
                 xbAddPath(p);
                 break;
-            case 'n':   // name a wifi module
+            case 'n': // name a wifi module
                 if (argv[i][2])
                     name = &argv[i][2];
                 else if (++i < argc)
@@ -200,7 +208,7 @@ int main(int argc, char *argv[])
                     usage(argv[0]);
                 done = true;
                 break;
-            case 'p':   // select a serial port
+            case 'p': // select a serial port
                 if (argv[i][2])
                     port = &argv[i][2];
                 else if (++i < argc)
@@ -208,21 +216,24 @@ int main(int argc, char *argv[])
                 else
                     usage(argv[0]);
 #if defined(CYGWIN) || defined(WIN32) || defined(LINUX)
-                if (isdigit((int)port[0])) {
+                if (isdigit((int)port[0]))
+                {
                     static char buf[64];
                     sprintf(buf, "%s%d", PORT_PREFIX, atoi(port));
                     port = buf;
                 }
 #endif
 #if defined(MACOSX) || defined(LINUX)
-                if (port[0] != '/') {
+                if (port[0] != '/')
+                {
                     static char buf[64];
                     sprintf(buf, "%s%s", PORT_PREFIX, port);
                     port = buf;
                 }
 #endif
 #if defined(MACOSX)
-                if (strncmp(port, "/dev/tty.", 9) == 0) {
+                if (strncmp(port, "/dev/tty.", 9) == 0)
+                {
                     static char buf[64];
                     sprintf(buf, "/dev/cu.%s", &port[9]);
                     nmessage(INFO_USING_ALTERNATE_PORT, buf, port);
@@ -231,31 +242,31 @@ int main(int argc, char *argv[])
 #endif
                 useSerial = true;
                 break;
-            case 'P':   // show serial ports
+            case 'P': // show serial ports
                 showPorts = true;
                 break;
-            case 'r':   // run program after loading
+            case 'r': // run program after loading
                 loadType |= ltDownloadAndRun;
                 break;
-            case 'R':   // reset the Propeller
+            case 'R': // reset the Propeller
                 reset = true;
                 done = true;
                 break;
-            case 's':   // use the serial loader instead of the wifi loader
+            case 's': // use the serial loader instead of the wifi loader
                 useSerial = true;
                 break;
-            case 't':   // enter terminal emulator mode after loading
+            case 't': // enter terminal emulator mode after loading
                 terminalMode = true;
                 pstTerminalMode = false;
                 break;
-            case 'T':   // enter pst-compatible terminal emulator mode after loading
+            case 'T': // enter pst-compatible terminal emulator mode after loading
                 terminalMode = true;
                 pstTerminalMode = true;
                 break;
-            case 'v':   // enable verbose debugging output
+            case 'v': // enable verbose debugging output
                 ++verbose;
                 break;
-            case 'W':   // show wifi modules
+            case 'W': // show wifi modules
                 showModules = true;
                 break;
             case '?':
@@ -264,9 +275,10 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-        
+
         /* remember the file to load */
-        else {
+        else
+        {
             if (file)
                 usage(argv[0]);
             file = argv[i];
@@ -274,25 +286,30 @@ int main(int argc, char *argv[])
     }
 
     /* show ports if requested */
-    if (showPorts) {
+    if (showPorts)
+    {
         ShowPorts(false);
         done = true;
     }
-    
+
     /* show modules if requested */
-    if (showModules) {
+    if (showModules)
+    {
         ShowWiFiModules(true);
         done = true;
     }
 
     /* before we do anything else, make sure we can read the Propeller image file */
-    if (file && !writeFile) {
+    if (file && !writeFile)
+    {
         nmessage(INFO_OPENING_FILE, file);
-        if (!(image = Loader::readFile(file, &imageSize))) {
+        if (!(image = Loader::readFile(file, &imageSize)))
+        {
             nmessage(ERROR_CANT_OPEN_FILE, file);
             return 1;
         }
-        switch (PropImage::validate(image, imageSize)) {
+        switch (PropImage::validate(image, imageSize))
+        {
         case PropImage::SUCCESS:
             // success
             break;
@@ -307,8 +324,8 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
-       
-/*
+
+    /*
 1) look in the directory specified by the -I command line option (added above)
 2) look in the directory where the elf file resides
 3) look in the directory pointed to by the environment variable PROPELLER_ELF_LOAD
@@ -324,14 +341,17 @@ int main(int argc, char *argv[])
 #if defined(LINUX) || defined(MACOSX) || defined(CYGWIN)
     xbAddPath("/opt/parallax/propeller-load");
 #endif
-    
+
     /* parse the board option */
     char boardBuffer[128];
-    if (board) {
-    
+    if (board)
+    {
+
         /* split the board type from the subtype */
-        if ((p = strchr(board, ':')) != NULL) {
-            if (p - board >= (int)sizeof(boardBuffer)) {
+        if ((p = strchr(board, ':')) != NULL)
+        {
+            if (p - board >= (int)sizeof(boardBuffer))
+            {
                 printf("error: board type name too long\n");
                 return 1;
             }
@@ -340,42 +360,52 @@ int main(int argc, char *argv[])
             board = boardBuffer;
             subtype = p + 1;
         }
-        
+
         /* no subtype */
         else
             subtype = DEF_SUBTYPE;
     }
-    
-    else {
+
+    else
+    {
         board = DEF_BOARD;
         subtype = DEF_SUBTYPE;
     }
 
     /* setup for the selected board */
-    if (!(config = ParseConfigurationFile(board))) {
+    if (!(config = ParseConfigurationFile(board)))
+    {
         printf("error: can't find board configuration '%s'\n", board);
         return 1;
     }
-    
+
     /* select the subtype */
-    if (subtype) {
-        if (!(config = GetConfigSubtype(config, subtype))) {
+    if (subtype)
+    {
+        if (!(config = GetConfigSubtype(config, subtype)))
+        {
             printf("error: can't find board configuration subtype '%s'\n", subtype);
             return 1;
         }
     }
-    
+
     /* override with any command line settings */
     config = MergeConfigs(config, configSettings);
-    
+
+    /* set programming style based on chip version */
+    if ((p = GetConfigField(config, "chipver")) != NULL && strcmp(p, "P2") == 0)
+        {chipVerP2 = true;
+        //message("Chip Version = P2");
+        }
+       
     /* decide whether to use the fast or rom loader */
     if ((p = GetConfigField(config, "loader")) != NULL && strcmp(p, "rom") == 0)
         useFastLoader = false;
-    
-   /* make sure a file to load was specified */
+
+    /* make sure a file to load was specified */
     if (!done && !reset && !file && !terminalMode)
         usage(argv[0]);
-        
+
     /* check to there is anything more to do */
     if (!reset && !file && !name && !terminalMode)
         goto finish;
@@ -383,21 +413,27 @@ int main(int argc, char *argv[])
     /* default to 'download and run' if neither -e nor -r are specified */
     if (loadType == ltShutdown)
         loadType = ltDownloadAndRun;
-        
+
     /* do a serial download */
-    if (useSerial) {
+    // TODO: Implement P2 serial loader based on chipver value
+    if (useSerial)
+    {
         SerialInfo info; // needs to stay in scope as long as we're using port
-        if (!(serialConnection = new SerialPropConnection)) {
+        if (!(serialConnection = new SerialPropConnection))
+        {
             nmessage(ERROR_INSUFFICIENT_MEMORY);
             return 1;
         }
-        if (!port) {
+        if (!port)
+        {
             SerialInfoList ports;
-            if (SerialPropConnection::findPorts(true, ports) != 0) {
+            if (SerialPropConnection::findPorts(true, ports) != 0)
+            {
                 nmessage(ERROR_SERIAL_PORT_DISCOVERY_FAILED);
                 return 1;
             }
-            if (ports.size() == 0) {
+            if (ports.size() == 0)
+            {
                 nmessage(ERROR_NO_SERIAL_PORTS_FOUND);
                 return 1;
             }
@@ -407,184 +443,268 @@ int main(int argc, char *argv[])
         int loaderBaudRate;
         if (!GetNumericConfigField(config, "loader-baud-rate", &loaderBaudRate))
             loaderBaudRate = DEF_LOADER_BAUDRATE;
-        if ((sts = serialConnection->open(port, loaderBaudRate)) != 0) {
+        if ((sts = serialConnection->open(port, loaderBaudRate)) != 0)
+        {
             nmessage(ERROR_UNABLE_TO_CONNECT_TO_PORT, port);
             return 1;
         }
         connection = serialConnection;
     }
-    
+
     /* do a wifi download */
-    else {
-        if (!(wifiConnection = new WiFiPropConnection)) {
-            nmessage(ERROR_INSUFFICIENT_MEMORY);
-            return 1;
-        }
-        if (!ipaddr) {
-            WiFiInfoList addrs;
-            if (WiFiPropConnection::findModules(false, addrs, 1) != 0) {
-                nmessage(ERROR_WIFI_MODULE_DISCOVERY_FAILED);
-                return 1;
-            }
-            if (addrs.size() == 0) {
-                nmessage(ERROR_NO_WIFI_MODULES_FOUND);
-                return 1;
-            }
-            const char *ipaddr2 = addrs.front().address();
-            char *p;
-            if (!(p = (char *)malloc(strlen(ipaddr2) + 1))) {
+    else
+    {
+
+        if (chipVerP2)
+        { // P2 Wifi Download
+
+            if (!(wifi2Connection = new WiFiProp2Connection))
+            {
                 nmessage(ERROR_INSUFFICIENT_MEMORY);
                 return 1;
             }
-            strcpy(p, ipaddr2);
-            ipaddr = p;
+            if (!ipaddr)
+            {
+                WiFi2InfoList addrs;
+                if (WiFiProp2Connection::findModules(false, addrs, 1) != 0)
+                {
+                    nmessage(ERROR_WIFI_MODULE_DISCOVERY_FAILED);
+                    return 1;
+                }
+                if (addrs.size() == 0)
+                {
+                    nmessage(ERROR_NO_WIFI_MODULES_FOUND);
+                    return 1;
+                }
+                const char *ipaddr2 = addrs.front().address();
+                char *p;
+                if (!(p = (char *)malloc(strlen(ipaddr2) + 1)))
+                {
+                    nmessage(ERROR_INSUFFICIENT_MEMORY);
+                    return 1;
+                }
+                strcpy(p, ipaddr2);
+                ipaddr = p;
+            }
+            if ((sts = wifi2Connection->setAddress(ipaddr)) != 0)
+            {
+                nmessage(ERROR_INVALID_MODULE_ADDRESS, ipaddr);
+                return 1;
+            }
+            if (wifi2Connection->getVersion() != 0)
+            {
+                nmessage(ERROR_UNABLE_TO_CONNECT_TO_MODULE, ipaddr);
+                return 1;
+            }
+            if ((sts = wifi2Connection->checkVersion()) != 0)
+            {
+                nmessage(ERROR_WRONG_WIFI_MODULE_FIRMWARE, wifi2Connection->version(), WIFI_REQUIRED_MAJOR_VERSION);
+                return 1;
+            }
+            connection = wifi2Connection;
         }
-        if ((sts = wifiConnection->setAddress(ipaddr)) != 0) {
-            nmessage(ERROR_INVALID_MODULE_ADDRESS, ipaddr);
-            return 1;
+        else
+        { // P1 Wifi Download
+
+            if (!(wifiConnection = new WiFiPropConnection))
+            {
+                nmessage(ERROR_INSUFFICIENT_MEMORY);
+                return 1;
+            }
+            if (!ipaddr)
+            {
+                WiFiInfoList addrs;
+                if (WiFiPropConnection::findModules(false, addrs, 1) != 0)
+                {
+                    nmessage(ERROR_WIFI_MODULE_DISCOVERY_FAILED);
+                    return 1;
+                }
+                if (addrs.size() == 0)
+                {
+                    nmessage(ERROR_NO_WIFI_MODULES_FOUND);
+                    return 1;
+                }
+                const char *ipaddr2 = addrs.front().address();
+                char *p;
+                if (!(p = (char *)malloc(strlen(ipaddr2) + 1)))
+                {
+                    nmessage(ERROR_INSUFFICIENT_MEMORY);
+                    return 1;
+                }
+                strcpy(p, ipaddr2);
+                ipaddr = p;
+            }
+            if ((sts = wifiConnection->setAddress(ipaddr)) != 0)
+            {
+                nmessage(ERROR_INVALID_MODULE_ADDRESS, ipaddr);
+                return 1;
+            }
+            if (wifiConnection->getVersion() != 0)
+            {
+                nmessage(ERROR_UNABLE_TO_CONNECT_TO_MODULE, ipaddr);
+                return 1;
+            }
+            if ((sts = wifiConnection->checkVersion()) != 0)
+            {
+                nmessage(ERROR_WRONG_WIFI_MODULE_FIRMWARE, wifiConnection->version(), WIFI_REQUIRED_MAJOR_VERSION);
+                return 1;
+            }
+            connection = wifiConnection;
         }
-        if (wifiConnection->getVersion() != 0) {
-            nmessage(ERROR_UNABLE_TO_CONNECT_TO_MODULE, ipaddr);
-            return 1;
-        }
-        if ((sts = wifiConnection->checkVersion()) != 0) {
-            nmessage(ERROR_WRONG_WIFI_MODULE_FIRMWARE, wifiConnection->version(), WIFI_REQUIRED_MAJOR_VERSION);
-            return 1;
-        }
-        connection = wifiConnection;
     }
-    
+
     /* set the connection configuration */
     connection->setConfig(config);
-    
+
     /* setup the reset method */
-    if ((p = GetConfigField(config, "reset")) != NULL) {
-        if (connection->setResetMethod(p) != 0) {
+    if ((p = GetConfigField(config, "reset")) != NULL)
+    {
+        if (connection->setResetMethod(p) != 0)
+        {
             nmessage(ERROR_NO_RESET_METHOD, p);
             return 1;
         }
     }
-        
+
     /* reset the Propeller */
-    if (reset) {
-        if (connection->generateResetSignal() != 0) {
+    if (reset)
+    {
+        if (connection->generateResetSignal() != 0)
+        {
             printf("error: failed to reset Propeller\n");
             return 1;
         }
     }
-    
+
     /* set the wifi module name */
-    if (name) {
-        if (!wifiConnection) {
+    if (name)
+    {
+        if (!wifiConnection)
+        {
             nmessage(ERROR_CAN_ONLY_NAME_WIFI_MODULES);
             return 1;
         }
-        
-#define isAllowed(ch)   (isupper(ch) || islower(ch) || isdigit(ch) || (ch) == '-')
+
+#define isAllowed(ch) (isupper(ch) || islower(ch) || isdigit(ch) || (ch) == '-')
 
         char cleanName[32], *p;
-        
+
         /* remove leading spaces or hyphens */
         p = cleanName;
         while (*name && (isspace(*name) || *name == '-'))
             ++name;
-        
+
         /* copy the rest of the name */
         bool inStringOfSpaces = false;
-        while (*name != '\0' && p < &cleanName[sizeof(cleanName) - 1]) {
-            if (isspace(*name)) {
+        while (*name != '\0' && p < &cleanName[sizeof(cleanName) - 1])
+        {
+            if (isspace(*name))
+            {
                 if (!inStringOfSpaces)
                     *p++ = '-';
                 inStringOfSpaces = true;
             }
-            else if (isAllowed(*name)) {
+            else if (isAllowed(*name))
+            {
                 *p++ = *name;
                 inStringOfSpaces = false;
             }
             ++name;
         }
-            
+
         /* remove trailing spaces or hyphens */
         while (p > cleanName && (isspace(p[-1]) || p[-1] == '-'))
             --p;
-            
+
         /* terminate the clean name */
         *p = '\0';
-        
+
         /* if we deleted every character then this is an invalid name */
-        if (!cleanName[0]) {
+        if (!cleanName[0])
+        {
             nmessage(ERROR_INVALID_MODULE_NAME);
             return 1;
         }
-        
+
         /* show the clean name if it is different from what the user requested */
         if (strcmp(name, cleanName) != 0)
             nmessage(INFO_SETTING_MODULE_NAME, cleanName);
-            
-        if (wifiConnection->setName(cleanName) != 0) {
+
+        if (wifiConnection->setName(cleanName) != 0)
+        {
             nmessage(ERROR_FAILED_TO_SET_MODULE_NAME);
             return 1;
         }
     }
-    
+
     /* write a file to the SD card */
-    if (writeFile) {
+    if (writeFile)
+    {
         nmessage(INFO_WRITING_TO_SD_CARD, file);
-        if (WriteFileToSDCard(config, connection, file, nullptr) != 0) {
+        if (WriteFileToSDCard(config, connection, file, nullptr) != 0)
+        {
             nmessage(ERROR_FAILED_TO_WRITE_TO_SD_CARD, file);
             return 1;
         }
     }
-    
+
     /* load a file */
-    else if (file) {
+    else if (file)
+    {
         loader.setConnection(connection);
-        if (useFastLoader) {
-            if ((sts = loader.fastLoadImage(image, imageSize, (LoadType)loadType)) != 0) {
+        if (useFastLoader)
+        {
+            if ((sts = loader.fastLoadImage(image, imageSize, (LoadType)loadType)) != 0)
+            {
                 nmessage(ERROR_DOWNLOAD_FAILED);
                 return 1;
             }
         }
-        else {
-            if ((sts = loader.loadImage(image, imageSize, (LoadType)loadType)) != 0) {
+        else
+        {
+            if ((sts = loader.loadImage(image, imageSize, (LoadType)loadType)) != 0)
+            {
                 nmessage(ERROR_DOWNLOAD_FAILED);
                 return 1;
             }
         }
         nmessage(INFO_DOWNLOAD_SUCCESSFUL);
     }
-    
+
     /* set the baud rate used by the program */
     int baudRate;
-    if (!GetNumericConfigField(config, "baud-rate", &baudRate)
-    &&  !GetNumericConfigField(config, "baudrate", &baudRate)) // for backwards compatibility
+    if (!GetNumericConfigField(config, "baud-rate", &baudRate) && !GetNumericConfigField(config, "baudrate", &baudRate)) // for backwards compatibility
         baudRate = DEF_TERMINAL_BAUDRATE;
-    if (connection->setBaudRate(baudRate) != 0) {
+    if (connection->setBaudRate(baudRate) != 0)
+    {
         nmessage(ERROR_FAILED_TO_SET_BAUD_RATE);
         return 1;
     }
-    
+
     /* enter terminal mode */
-    if (terminalMode) {
+    if (terminalMode)
+    {
         nmessage(INFO_TERMINAL_MODE);
-        
+
         /* open a connection to the target */
-        if (!connection->isOpen() && connection->connect() != 0) {
+        if (!connection->isOpen() && connection->connect() != 0)
+        {
             message("Can't open connection to target");
             nmessage(ERROR_FAILED_TO_ENTER_TERMINAL_MODE);
             return 1;
         }
-        
+
         /* enter terminal mode */
-        if (connection->terminal(false, pstTerminalMode) != 0) {
+        if (connection->terminal(false, pstTerminalMode) != 0)
+        {
             nmessage(ERROR_FAILED_TO_ENTER_TERMINAL_MODE);
             return 1;
         }
     }
-    
+
     /* disconnect from the target */
     connection->disconnect();
-    
+
 finish:
     /* return successfully */
     return 0;
@@ -593,9 +713,11 @@ finish:
 static void ShowPorts(bool check)
 {
     SerialInfoList ports;
-    if (SerialPropConnection::findPorts(check, ports) == 0) {
+    if (SerialPropConnection::findPorts(check, ports) == 0)
+    {
         SerialInfoList::iterator i = ports.begin();
-        while (i != ports.end()) {
+        while (i != ports.end())
+        {
             std::cout << i->port() << std::endl;
             ++i;
         }
@@ -608,9 +730,9 @@ static void ShowWiFiModules(bool show)
     WiFiPropConnection::findModules(true, modules);
 }
 
-#define TYPE_FILE_WRITE     0
-#define TYPE_DATA           1
-#define TYPE_EOF            2
+#define TYPE_FILE_WRITE 0
+#define TYPE_DATA 1
+#define TYPE_EOF 2
 
 static int WriteFileToSDCard(BoardConfig *config, PropConnection *connection, const char *path, const char *target)
 {
@@ -624,7 +746,8 @@ static int WriteFileToSDCard(BoardConfig *config, PropConnection *connection, co
     if ((fp = fopen(path, "rb")) == NULL)
         return nerror(ERROR_CANT_OPEN_FILE, path);
 
-    if (!target) {
+    if (!target)
+    {
         if (!(target = strrchr(path, '/')))
             target = path;
         else
@@ -636,7 +759,8 @@ static int WriteFileToSDCard(BoardConfig *config, PropConnection *connection, co
     fseek(fp, 0, SEEK_SET);
 
     message("Loading SD helper");
-    if (LoadSDHelper(config, connection) != 0) {
+    if (LoadSDHelper(config, connection) != 0)
+    {
         fclose(fp);
         return error("Loading SD helper");
     }
@@ -645,14 +769,17 @@ static int WriteFileToSDCard(BoardConfig *config, PropConnection *connection, co
     if (!packetDriver.waitForInitialAck())
         return error("Failed to connect to helper");
 
-    if (!packetDriver.sendPacket(TYPE_FILE_WRITE, (uint8_t *)target, strlen(target) + 1)) {
+    if (!packetDriver.sendPacket(TYPE_FILE_WRITE, (uint8_t *)target, strlen(target) + 1))
+    {
         fclose(fp);
         return error("SendPacket FILE_WRITE failed");
     }
 
-    while ((cnt = fread(buf, 1, PKTMAXLEN, fp)) > 0) {
+    while ((cnt = fread(buf, 1, PKTMAXLEN, fp)) > 0)
+    {
         nprogress(INFO_BYTES_REMAINING, (long)remaining);
-        if (!packetDriver.sendPacket(TYPE_DATA, buf, cnt)) {
+        if (!packetDriver.sendPacket(TYPE_DATA, buf, cnt))
+        {
             fclose(fp);
             return error("SendPacket DATA failed");
         }
@@ -678,13 +805,15 @@ static int WriteFileToSDCard(BoardConfig *config, PropConnection *connection, co
     return 0;
 }
 
-extern "C" {
+extern "C"
+{
     extern uint8_t sd_helper_array[];
     extern int sd_helper_size;
 }
 
 /* DAT header in sd_helper.spin */
-typedef struct {
+typedef struct
+{
     uint32_t baudrate;
     uint8_t tvpin;
     uint8_t dopin;
@@ -756,12 +885,9 @@ static int LoadSDHelper(BoardConfig *config, PropConnection *connection)
     /* load the SD helper program */
     if (loader.fastLoadImage(image.imageData(), image.imageSize(), ltDownloadAndRun) != 0)
         return error("Helper load failed");
-        
+
     /* select the sd helper baud rate */
     connection->setBaudRate(dat->baudrate);
 
     return 0;
 }
-
-
-
