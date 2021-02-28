@@ -253,7 +253,7 @@ Content-Length: %d\r\n\
 #define NAME_TAG        "\"name\": \""
 #define MACADDR_TAG     "\"mac address\": \""
 
-int WiFiProp2Connection::findModules(bool show, WiFi2InfoList &list, int count)
+int WiFiProp2Connection::findModules(bool show, WiFiInfoList &list, int count)
 {
     uint8_t txBuf[1024]; // BUG: get rid of this magic number!
     uint8_t rxBuf[1024]; // BUG: get rid of this magic number!
@@ -322,7 +322,7 @@ int WiFiProp2Connection::findModules(bool show, WiFi2InfoList &list, int count)
                 char macAddrBuffer[128];
                 
                 /* make sure we don't already have a response from this module */
-                WiFi2InfoList::iterator i = list.begin();
+                WiFiInfoList::iterator i = list.begin();
                 bool skip = false;
                 while (i != list.end()) {
                     if (i->address() == addressStr) {
@@ -389,7 +389,7 @@ int WiFiProp2Connection::findModules(bool show, WiFi2InfoList &list, int count)
                     printf("\n");
                 }
                 
-                WiFi2Info info(name, addressStr);
+                WiFiInfo info(name, addressStr);
                 list.push_back(info);
             
                 if (count > 0 && --count == 0) {

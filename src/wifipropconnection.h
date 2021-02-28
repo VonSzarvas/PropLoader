@@ -5,6 +5,7 @@
 #include <list>
 #include "propconnection.h"
 #include "sock.h"
+#include "wifiinfo.h"
 
 #define WIFI_REQUIRED_MAJOR_VERSION         "v1."
 #define WIFI_REQUIRED_MAJOR_VERSION_LEGACY  "02-"
@@ -14,19 +15,6 @@
 #define RESPONSE_TIMEOUT            3000
 #define DISCOVER_REPLY_TIMEOUT      250
 #define DISCOVER_ATTEMPTS           3
-
-class WiFiInfo {
-public:
-    WiFiInfo() {}
-    WiFiInfo(std::string name, std::string address) : m_name(name), m_address(address) {}
-    const char *name() { return m_name.c_str(); }
-    const char *address() { return m_address.c_str(); }
-private:
-    std::string m_name;
-    std::string m_address;
-};
-
-typedef std::list<WiFiInfo> WiFiInfoList;
 
 class WiFiPropConnection : public PropConnection
 {
