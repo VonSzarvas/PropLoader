@@ -225,6 +225,7 @@ int WiFiProp2Connection::loadImage(const uint8_t *image, int imageSize, LoadType
     message("b) Load done!");
     return 0;
 
+    /*
     uint8_t buffer[1024], *packet;
     int hdrCnt, result, cnt;
     int loaderBaudRate;
@@ -232,11 +233,11 @@ int WiFiProp2Connection::loadImage(const uint8_t *image, int imageSize, LoadType
     if (!GetNumericConfigField(config(), "loader-baud-rate", &loaderBaudRate))
         loaderBaudRate = DEF_LOADER_BAUDRATE;
 
-    /* WX image buffer is limited to 2K */
+    // WX image buffer is limited to 2K
     if (imageSize > 2048)
         return -1;
 
-    /* use the initial loader baud rate */
+    // use the initial loader baud rate 
     if (setBaudRate(loaderBaudRate) != 0)
         return -1;
 
@@ -298,7 +299,7 @@ Content-Length: %d\r\n\
         return sts;
     }
 
-    return 0;
+    return 0;*/
 }
 
 #define MAX_IF_ADDRS 20
@@ -582,7 +583,7 @@ static const uint8_t p2_Prop_Chk[] = {
 int WiFiProp2Connection::checkChipVersion()
 {
     uint8_t buffer[1024];
-    int hdrCnt, result;
+    int hdrCnt;
 
     generateResetSignal();
     usleep(15000); // P2 back online 15ms after reset
@@ -614,9 +615,7 @@ static const uint8_t p2_Prop_Hex[] = { // Binary mode
 
 int WiFiProp2Connection::sendDownloadHeader()
 {
-    uint8_t buffer[1024];
-    int hdrCnt, result;
-
+    
     generateResetSignal();
     usleep(15000);
 
