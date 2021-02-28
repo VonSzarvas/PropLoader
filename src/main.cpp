@@ -308,7 +308,9 @@ int main(int argc, char *argv[])
             nmessage(ERROR_CANT_OPEN_FILE, file);
             return 1;
         }
-        switch (PropImage::validate(image, imageSize))
+        
+        // TODO: Implement check for valid P2 image here; could be used to determine programming protcol!
+        /*switch (PropImage::validate(image, imageSize))
         {
         case PropImage::SUCCESS:
             // success
@@ -322,7 +324,7 @@ int main(int argc, char *argv[])
         default:
             nmessage(ERROR_INTERNAL_CODE_ERROR);
             return 1;
-        }
+        }*/
     }
 
     /*
@@ -465,7 +467,7 @@ int main(int argc, char *argv[])
             }
             if (!ipaddr)
             {
-                WiFi2InfoList addrs;
+                WiFiInfoList addrs;
                 if (WiFiProp2Connection::findModules(false, addrs, 1) != 0)
                 {
                     nmessage(ERROR_WIFI_MODULE_DISCOVERY_FAILED);
@@ -500,7 +502,8 @@ int main(int argc, char *argv[])
             {
                 nmessage(ERROR_WRONG_WIFI_MODULE_FIRMWARE, wifi2Connection->version(), WIFI_REQUIRED_MAJOR_VERSION);
                 return 1;
-            }
+            }          
+
             connection = wifi2Connection;
         }
         else

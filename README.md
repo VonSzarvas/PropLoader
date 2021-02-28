@@ -40,7 +40,7 @@ Variables that can be set with -D are:
 
 Used by the loader:
   loader reset clkfreq clkmode fast-loader-clkfreq fastloader-clkmode
-  baudrate loader-baud-rate fast-loader-baud-rate
+  baudrate loader-baud-rate fast-loader-baud-rate chipver
 
 Used by the SD file writer:
   sdspi-do sdspi-clk sdspi-di sdspi-cs
@@ -54,6 +54,7 @@ Value expressions for -D can include:
 
 Examples:
   loader=rom  to use the ROM loader instead of the fast loader
+  chipver=P2 for P2 programming protocol (only wireless programming currently supported)
 ```
 
 The C++ code should be mostly generic. The platform-specific code is in the C files

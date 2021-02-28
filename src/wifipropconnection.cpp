@@ -66,6 +66,8 @@ int WiFiPropConnection::close()
 
 int WiFiPropConnection::connect()
 {
+    message("connect - Chip Version = P1");
+    
     if (isOpen())
         return -1;
         
@@ -102,6 +104,8 @@ static int beginsWith(const char *body, const char *str)
     
 int WiFiPropConnection::loadImage(const uint8_t *image, int imageSize, uint8_t *response, int responseSize)
 {
+    message("a) Load Image to Chip Version = P1");
+    
     uint8_t buffer[1024], *packet, *body;
     int hdrCnt, result, cnt;
     int loaderBaudRate;
@@ -182,6 +186,8 @@ Content-Length: %d\r\n\
 
 int WiFiPropConnection::loadImage(const uint8_t *image, int imageSize, LoadType loadType, int info)
 {
+    message("b) Load Image to Chip Version = P1");
+    
     uint8_t buffer[1024], *packet;
     int hdrCnt, result, cnt;
     int loaderBaudRate;
@@ -497,6 +503,8 @@ int WiFiPropConnection::setResetMethod(const char *method)
 {
     if (strcmp(method, "dtr") == 0)
         m_resetPin = 12;
+    else if (strcmp(method, "cts") == 0)
+        m_resetPin = 13;    
     else if (strcmp(method, "rts") == 0)
         m_resetPin = 15;
     else if (isdigit(*method))
@@ -508,6 +516,8 @@ int WiFiPropConnection::setResetMethod(const char *method)
 
 int WiFiPropConnection::generateResetSignal()
 {
+    message("generateResetSignal - Chip Version = P2");
+    
     uint8_t buffer[1024];
     int hdrCnt, result;
     

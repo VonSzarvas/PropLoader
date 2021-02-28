@@ -108,6 +108,7 @@ $(OBJDIR)/config.o \
 $(OBJDIR)/expr.o \
 $(OBJDIR)/system.o \
 $(OBJDIR)/messages.o \
+$(OBJDIR)/base64.o \
 $(OSINT)
 
 CFLAGS+=-I$(OBJDIR)

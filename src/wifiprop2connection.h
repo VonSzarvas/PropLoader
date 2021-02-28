@@ -24,11 +24,15 @@ public:
     int setAddress(const char *ipaddr);
     int getVersion();
     int checkVersion();
+    int checkChipVersion();
     const char *version() { return m_version ? m_version : "(unknown)"; }
     bool isOpen();
     int close();
     int connect();
     int disconnect();
+    int sendDownloadHeader();
+    int sendDownloadDataHex(const uint8_t *image, int imageSize);
+    int sendDownloadDataTxt(const uint8_t *image, int imageSize);
     int setName(const char *name);
     int setResetMethod(const char *method);
     int generateResetSignal();
@@ -36,12 +40,13 @@ public:
     int loadImage(const uint8_t *image, int imageSize, uint8_t *response, int responseSize);
     int loadImage(const uint8_t *image, int imageSize, LoadType loadType = ltDownloadAndRun, int info = false);
     int sendData(const uint8_t *buf, int len);
+    int receiveData(const uint8_t *buf, int len);
     int receiveDataTimeout(uint8_t *buf, int len, int timeout);
     int receiveDataExactTimeout(uint8_t *buf, int len, int timeout);
     int setBaudRate(int baudRate);
     int maxDataSize() { return 1024; }
     int terminal(bool checkForExit, bool pstMode);
-    static int findModules(bool show, WiFi2InfoList &list, int count = -1);
+    static int findModules(bool show, WiFiInfoList &list, int count = -1);
 private:
     int sendRequest(uint8_t *req, int reqSize, uint8_t *res, int resMax, int *pResult);
     static uint8_t *getBody(uint8_t *msg, int msgSize, int *pBodySize);
