@@ -308,7 +308,7 @@ int main(int argc, char *argv[])
             nmessage(ERROR_CANT_OPEN_FILE, file);
             return 1;
         }
-        
+
         // TODO: Implement check for valid P2 image here; could be used to determine programming protcol!
         /*switch (PropImage::validate(image, imageSize))
         {
@@ -396,10 +396,12 @@ int main(int argc, char *argv[])
 
     /* set programming style based on chip version */
     if ((p = GetConfigField(config, "chipver")) != NULL && strcmp(p, "P2") == 0)
-        {chipVerP2 = true;
-        //message("Chip Version = P2");
-        }
-       
+    {
+        chipVerP2 = true;
+        useFastLoader = false;
+        message("Chip Version set to P2 and P1-fast-loader disabled");
+    }
+
     /* decide whether to use the fast or rom loader */
     if ((p = GetConfigField(config, "loader")) != NULL && strcmp(p, "rom") == 0)
         useFastLoader = false;
@@ -420,37 +422,46 @@ int main(int argc, char *argv[])
     // TODO: Implement P2 serial loader based on chipver value
     if (useSerial)
     {
-        SerialInfo info; // needs to stay in scope as long as we're using port
-        if (!(serialConnection = new SerialPropConnection))
-        {
-            nmessage(ERROR_INSUFFICIENT_MEMORY);
-            return 1;
+        if (chipVerP2)
+        { // P2 serial download
+
+            // TODO - Extend serialpropconnection.cpp with P2 serial loader
+            message("Serial download for Propeller 2 not supported!");
         }
-        if (!port)
-        {
-            SerialInfoList ports;
-            if (SerialPropConnection::findPorts(true, ports) != 0)
+        else
+        {                    // P1 Serial download
+            SerialInfo info; // needs to stay in scope as long as we're using port
+            if (!(serialConnection = new SerialPropConnection))
             {
-                nmessage(ERROR_SERIAL_PORT_DISCOVERY_FAILED);
+                nmessage(ERROR_INSUFFICIENT_MEMORY);
                 return 1;
             }
-            if (ports.size() == 0)
+            if (!port)
             {
-                nmessage(ERROR_NO_SERIAL_PORTS_FOUND);
+                SerialInfoList ports;
+                if (SerialPropConnection::findPorts(true, ports) != 0)
+                {
+                    nmessage(ERROR_SERIAL_PORT_DISCOVERY_FAILED);
+                    return 1;
+                }
+                if (ports.size() == 0)
+                {
+                    nmessage(ERROR_NO_SERIAL_PORTS_FOUND);
+                    return 1;
+                }
+                info = ports.front();
+                port = info.port();
+            }
+            int loaderBaudRate;
+            if (!GetNumericConfigField(config, "loader-baud-rate", &loaderBaudRate))
+                loaderBaudRate = DEF_LOADER_BAUDRATE;
+            if ((sts = serialConnection->open(port, loaderBaudRate)) != 0)
+            {
+                nmessage(ERROR_UNABLE_TO_CONNECT_TO_PORT, port);
                 return 1;
             }
-            info = ports.front();
-            port = info.port();
+            connection = serialConnection;
         }
-        int loaderBaudRate;
-        if (!GetNumericConfigField(config, "loader-baud-rate", &loaderBaudRate))
-            loaderBaudRate = DEF_LOADER_BAUDRATE;
-        if ((sts = serialConnection->open(port, loaderBaudRate)) != 0)
-        {
-            nmessage(ERROR_UNABLE_TO_CONNECT_TO_PORT, port);
-            return 1;
-        }
-        connection = serialConnection;
     }
 
     /* do a wifi download */
@@ -502,7 +513,7 @@ int main(int argc, char *argv[])
             {
                 nmessage(ERROR_WRONG_WIFI_MODULE_FIRMWARE, wifi2Connection->version(), WIFI_REQUIRED_MAJOR_VERSION);
                 return 1;
-            }          
+            }
 
             connection = wifi2Connection;
         }

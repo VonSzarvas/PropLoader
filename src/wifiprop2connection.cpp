@@ -217,12 +217,12 @@ int WiFiProp2Connection::loadImage(const uint8_t *image, int imageSize, LoadType
 
     message("P2 Chip Version %d", checkChipVersion());
     
-    usleep(15000); // IMPORTANT! (TODO: Buffer flush might be a better solution. WiFi module crashes/resets without a small pause between commands on the telnet socket)
+    usleep(20000); // IMPORTANT! (TODO: Buffer flush might be a better solution. WiFi module crashes/resets without a small pause between commands on the telnet socket)
     
     sendDownloadDataTxt(image, imageSize);
 
-
     message("b) Load done!");
+
     return 0;
 
     /*
@@ -617,7 +617,7 @@ int WiFiProp2Connection::sendDownloadHeader()
 {
     
     generateResetSignal();
-    usleep(15000);
+    usleep(16000);
 
     if (sendData(p2_Prop_Txt, sizeof(p2_Prop_Txt)) != sizeof(p2_Prop_Txt))
     {
@@ -625,21 +625,14 @@ int WiFiProp2Connection::sendDownloadHeader()
         return -1;
     }
 
+    message("sendDownloadHeader OK!");
+
     return 0;
 }
 
 int WiFiProp2Connection::sendDownloadDataHex(const uint8_t *image, int size)
 {
-    /*uint8_t buffer[1024];
-    int hdrCnt, result;
-
-    if (sendData(buffer, hdrCnt)) {
-        message("sendDownloadDataHex failed");
-        return -1;
-    }*/
-
-    // const uint8_t *buffer, int size)
-
+    // Not implemented. Use sendDownloadDataTxt instead
     return 0;
 }
 
@@ -649,31 +642,20 @@ static const uint8_t p2_tilde[] = { // Send after download data; no checksum mod
 
 int WiFiProp2Connection::sendDownloadDataTxt(const uint8_t *image, int size)
 {
-    /*uint8_t buffer[1024];
-    int hdrCnt, result;
-
-    if (sendData(buffer, hdrCnt)) {
-        message("sendDownloadDataTxt failed");
-        return -1;
-    }*/
-
     int enclen = 4 * ((size + 2) / 3);
     uint8_t *enc = (uint8_t *)malloc(enclen);
 
-    // int Base64encode(char *encoded, const char *string, int len)
     message("base encode %d : %d", Base64encode((char *)enc, (char *)image, size), enclen);
 
-    /*if (!base64_encode(image, size, enc, enclen))
-            return -1;*/
-
-    // TODO: Improve this! Replace equals sign with space; quick safety if base64 encoder trails with =
-    //enclen = sizeof(enc); // not required if encoder doesn't resize array
+    // TODO: Improve this! 
+    // Replace equals sign with space; quick safety if base64 encoder trails with =
+    
     for (int di = 0; di < enclen; di++)
     {
         if (enc[di] == 0x3D) // Don't transmit = sign
         {
             enc[di] = 0x20;
-            message("enc removed = at %d", di);
+            message("enc cleared = at %d", di);
         }
     }
 
@@ -689,7 +671,8 @@ int WiFiProp2Connection::sendDownloadDataTxt(const uint8_t *image, int size)
         message("download failed!");
     }
 
-    free(enc);
+    //free(enc); // C++ handles this automatically, and including may cause Windows to freeze here. Also buffer may be destroyed before Windows finishes transmission.
+    
 
     return 0;
 }

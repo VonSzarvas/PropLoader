@@ -52,9 +52,23 @@ Value expressions for -D can include:
   an integer or two operands with a binary operator + - * / % & | or unary + or -
   or a parenthesized expression.
 
-Examples:
-  loader=rom  to use the ROM loader instead of the fast loader
+Note:
+  
+  loader=rom to use the P1 ROM loader instead of the P1 fast loader
+
   chipver=P2 for P2 programming protocol (only wireless programming currently supported)
+
+Examples:
+
+  Wireless programming P2 : proploader -D chipver=P2 -D reset=cts -r <FILENAME.binary>
+
+  Wireless programming P2 with terminal : proploader -T -D chipver=P2 -D reset=cts -r <FILENAME.binary>
+
+  Wireless programming P2 with specific IP address : proploader -D chipver=P2 -D reset=cts -i <IPADDRESS> -r <FILENAME.binary>
+
+  List wireless modules : proploader -W
+
+
 ```
 
 The C++ code should be mostly generic. The platform-specific code is in the C files
